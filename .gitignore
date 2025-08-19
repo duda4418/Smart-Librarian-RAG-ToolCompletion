@@ -1,0 +1,43 @@
+# --- Global ---
+.DS_Store
+*.log
+.env
+.env.local
+.env.*.local
+
+# --- Python / Backend ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.sqlite3
+*.db
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.venv/
+venv/
+ENV/
+env/
+.idea/
+*.coverage
+.coverage.*
+.pytest_cache/
+.mypy_cache/
+.dmypy.json
+.pyre/
+backend/chroma_data/
+
+# --- Node / Frontend (Next.js) ---
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp/
+.pnp.js
+.cache/
+.vercel/
