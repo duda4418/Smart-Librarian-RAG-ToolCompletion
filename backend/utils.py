@@ -68,20 +68,3 @@ def answer_with_rag(user_query: str, *, n=3, k=3, temp=0.2, max_tokens=500, fall
         store=False,
     )
     return resp.output_text
-
-
-def repl():
-    print("📚 Book Recommender (RAG) — scrie 'exit' pentru a închide.")
-    while True:
-        try:
-            q = input("\nTu: ").strip()
-            if not q:
-                continue
-            if q.lower() in {"exit", "quit", "q"}:
-                print("Bye!")
-                break
-            ans = answer_with_rag(q)
-            print(f"\nAsistent:\n{ans}")
-        except KeyboardInterrupt:
-            print("\nBye!")
-            break

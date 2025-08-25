@@ -1,4 +1,3 @@
-
 'use client';
 import { useState } from 'react';
 import BeeqSetup from './beeq';
@@ -9,12 +8,27 @@ export default function Home() {
   ]);
   const [input, setInput] = useState('');
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (input.trim() === '') return;
-    setMessages([...messages, { sender: 'user', text: input }]);
+    setMessages(prev => [...prev, { sender: 'user', text: input }]);
+    const userMessage = input;
     setInput('');
-    // Add chatbot API logic here
-  };
+
+    try {
+      const res = await fetch('http://localhost:8000/api/openai/response', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ user_query: userMessage }),
+      });
+      const responseText = await res.text();
+      setMessages(prev => [...prev, { sender: 'bot', text: responseText || 'No response' }]);
+        }
+    catch (err) {
+        setMessages(prev => [...prev, { sender: 'bot', text: 'Error: Could not get response.' }]);
+      }
+    };
 
   return (
       <div
