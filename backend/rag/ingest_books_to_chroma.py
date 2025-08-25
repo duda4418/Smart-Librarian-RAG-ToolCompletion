@@ -76,14 +76,13 @@ for i in range(0, len(documents), BATCH):
 print(f"Upserted {len(documents)} items into Chroma collection '{COLLECTION_NAME}' at '{DB_DIR}'.")
 
 # -------- Quick retrieval demo --------
-# Feel free to change the query to anything (e.g., "dystopian surveillance", "whales and obsession", etc.)
-# query = "dystopian surveillance and government control"
-# results = collection.query(
-#     query_texts=[query],
-#     n_results=3,
-#     include=["documents", "metadatas", "distances"]
-# )
-#
-# print("\nTop matches:")
-# for doc, meta, dist in zip(results["documents"][0], results["metadatas"][0], results["distances"][0]):
-#     print(f"- {meta['title']}  (distance: {dist:.4f})")
+def get_book_recommendations(query, n=3):
+    """Retrieve books similar to the given title."""
+    results = collection.query(
+        query_texts=[query],
+        n_results=n,
+        include=["documents", "metadatas", "distances"]
+    )
+    # for doc, meta, dist in zip(results["documents"][0], results["metadatas"][0], results["distances"][0]):
+    #     print(f"- {meta['title']}  (distance: {dist:.4f})")
+    return results
