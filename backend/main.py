@@ -2,8 +2,7 @@ from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 import uvicorn
 
-from opanAI import openai_router
-
+from open_ai.openAI import openai_router
 app = FastAPI()
 
 app.add_middleware(

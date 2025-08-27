@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
-from utils import answer_with_rag
-from models import UserQuery
+from .utils import answer_with_rag
+from .models import UserQuery
+
 openai_router = APIRouter()
 
 @openai_router.post("/api/openai/response")
