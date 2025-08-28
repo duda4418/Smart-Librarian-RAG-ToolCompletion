@@ -3,18 +3,12 @@ import json
 from collections import OrderedDict
 from pathlib import Path
 from typing import List, Dict, Any
-
 from openai import OpenAI
+from rag.ingest_books_to_chroma import get_book_recommendations
 
-# Import your existing retrieval function and the live Chroma collection
-# (Both are set up in ingest_books_to_chroma.py)
-from rag.ingest_books_to_chroma import get_book_recommendations  # uses the persisted 'books' collection
-
-# Local JSON data source used by the tool
 SCRIPT_DIR = Path(__file__).resolve().parent
 JSON_PATH = SCRIPT_DIR.parent / "data" / "book_summaries.json"
 
-# --- OpenAI client ---
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 SYSTEM_PROMPT = (
@@ -32,30 +26,27 @@ def _load_book_summaries() -> Dict[str, str]:
         return {}
     with JSON_PATH.open("r", encoding="utf-8") as f:
         data = json.load(f)
-    # Expect list of {"title": "...", "summary": "..."}
     return {item["title"]: item["summary"] for item in data if "title" in item and "summary" in item}
 
 def get_summary_by_title(title: str) -> str:
-    """Return the full summary for an exact book title from local JSON."""
+    #Return the full summary for an exact book title from local JSON.
     db = _load_book_summaries()
     if not db:
         return "Local summaries not found."
     if not title:
         return "Title not found in local summaries."
-    # Exact match first, then trimmed fallback
     if title in db:
         return db[title]
     key = title.strip()
     return db.get(key, "Title not found in local summaries.")
 
 def build_context_from_results(results: Dict[str, Any], max_items: int = 3):
-    """Compact RAG context: de-dupe by title, add similarity, and format numbered blocks."""
+    #Compact RAG context: de-dupe by title, add similarity, and format numbered blocks.
     if not results or not results.get("documents"):
         return "", []
 
     docs, metas, dists = (results[k][0] for k in ("documents", "metadatas", "distances"))
 
-    # De-dupe while preserving order
     by_title: "OrderedDict[str, Any]" = OrderedDict()
     for doc, meta, dist in zip(docs, metas, dists):
         title = (meta.get("title") or "Untitled").strip() or "Untitled"
@@ -71,7 +62,7 @@ def build_context_from_results(results: Dict[str, Any], max_items: int = 3):
     ]
     return "\n\n".join(parts), [title for title, _ in rows]
 
-# ---- Tools schema (aligns with official docs) ----
+# Tool
 TOOLS = [
     {
         "type": "function",
@@ -102,7 +93,6 @@ def _safe_json_loads(s: str) -> Dict[str, Any]:
 def _execute_tool_call(name: str, args: Dict[str, Any]) -> str:
     if name == "get_summary_by_title":
         return get_summary_by_title((args.get("title") or "").strip())
-    # Future: add more tools here
     return "Unknown tool."
 
 def answer_with_rag(
@@ -114,16 +104,8 @@ def answer_with_rag(
     max_tokens: int = 500,
     fallback_message: str | None = None
 ) -> str:
-    """
-    Chat Completions function-calling (per docs):
-      1) Retrieve similar books and build compact RAG context (titles + short summaries).
-      2) Ask the model with `tools` enabled; capture tool calls.
-      3) Execute tool calls locally; send back `tool` role messages keyed by tool_call_id.
-      4) Get final composed answer.
 
-    If the context is empty, return a friendly fallback.
-    """
-    # ---------- Stage 1: Retrieve + build context ----------
+    # Retrieve + build context ----------
     results = get_book_recommendations(user_query, n=n)
     context_str, titles = build_context_from_results(results, max_items=k)
 
@@ -150,7 +132,7 @@ def answer_with_rag(
         {"role": "user", "content": f"RAG CONTEXT:\n{context_str}\n\nUSER QUESTION:\n{user_query}"},
     ]
 
-    # ---------- Stage 1: Ask model; allow tool calls ----------
+    # Ask model + allow tool calls
     first = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=messages,
@@ -166,7 +148,7 @@ def answer_with_rag(
     tool_msgs: List[Dict[str, Any]] = []
     chosen_title = ""
 
-    # ---------- Stage 1.5: Execute any/all tool calls locally ----------
+    # Execute tool calls locally
     if assistant_msg and getattr(assistant_msg, "tool_calls", None):
         for tc in assistant_msg.tool_calls:
             if tc.type != "function":
@@ -184,11 +166,10 @@ def answer_with_rag(
                 "content": result_text
             })
 
-    # ---------- Decide path: with or without tool calls ----------
+    #Decide with or without tool calls
     has_tool_calls = bool(assistant_msg and getattr(assistant_msg, "tool_calls", None))
 
     if not has_tool_calls:
-        # No tools requested -> DO NOT send any role:"tool" messages.
         # If the first reply already has content, return it directly.
         first_content = ""
         if assistant_msg:
@@ -200,14 +181,13 @@ def answer_with_rag(
         if first_content and str(first_content).strip():
             return first_content
 
-        # Otherwise, compose a minimal local answer (no second API call).
-        # Pick the top title (if any) and include its local summary.
+        # Pick the top title and include its local summary.
         local_title = (titles[0] if titles else "").strip()
         full_summary = get_summary_by_title(local_title) if local_title else "No matching titles in local summaries."
         rationale = "Picked based on highest similarity in the RAG context."
         return f"- **Title:** {local_title or 'Unknown'}\n- {rationale}\n- {full_summary}"
 
-    # ---------- Stage 1.5: Execute any/all tool calls locally ----------
+    # Execute tool calls locally
     tool_msgs: List[Dict[str, Any]] = []
     chosen_title = ""
     for tc in assistant_msg.tool_calls:
@@ -220,11 +200,11 @@ def answer_with_rag(
         result_text = _execute_tool_call(fn_name, args)
         tool_msgs.append({
             "role": "tool",
-            "tool_call_id": tc.id,  # IMPORTANT: must match the assistant's tool_call id
+            "tool_call_id": tc.id,
             "content": result_text
         })
 
-    # ---------- Stage 2: Compose final answer with the tool results ----------
+    # Compose final answer
     compose_system = {
         "role": "system",
         "content": (
@@ -245,9 +225,9 @@ def answer_with_rag(
 
     second_messages: List[Dict[str, Any]] = [
         compose_system,
-        messages[1],  # original user+context message
-        assistant_payload,  # assistant message that requested the tools
-        *tool_msgs  # tool outputs with matching tool_call_id(s)
+        messages[1],
+        assistant_payload,
+        *tool_msgs
     ]
 
     final = client.chat.completions.create(
