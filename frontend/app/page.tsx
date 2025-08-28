@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import BeeqSetup from './beeq';
+import ReactMarkdown from 'react-markdown';
 
 export default function Home() {
   const [messages, setMessages] = useState([
@@ -58,7 +59,7 @@ export default function Home() {
             padding: "2vw 2vw",
           }}
         >
-          <h2 style={{ textAlign: "center", marginBottom: 24 }}>Chatbot Discussion</h2>
+          <h2 style={{ textAlign: "center", marginBottom: 24 }}>Smart Librarian Chatbot</h2>
           <div
             style={{
               flex: 1,
@@ -73,9 +74,28 @@ export default function Home() {
           >
             {messages.map((msg, idx) => (
               <div key={idx} style={{ textAlign: msg.sender === "user" ? "right" : "left", marginBottom: 12 }}>
-                <span style={{ display: "inline-block", padding: "8px 16px", borderRadius: 16, background: msg.sender === "user" ? "#0070f3" : "#eaeaea", color: msg.sender === "user" ? "#fff" : "#333" }}>
-                  {msg.text}
-                </span>
+                {msg.sender === "bot" ? (
+                  <span style={{
+                    display: "inline-block",
+                    padding: "16px 20px",
+                    borderRadius: 18,
+                    background: "linear-gradient(135deg, #f3f6fc 60%, #e9f0fb 100%)",
+                    color: "#222",
+                    maxWidth: "80%",
+                    textAlign: "left",
+                    whiteSpace: "pre-wrap",
+                    fontSize: "1.08rem",
+                    fontFamily: "Segoe UI, Arial, sans-serif",
+                    border: "1px solid #dbeafe",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+                  }}>
+                    <ReactMarkdown>{msg.text.replace(/\\n/g, '\n')}</ReactMarkdown>
+                  </span>
+                ) : (
+                  <span style={{ display: "inline-block", padding: "8px 16px", borderRadius: 16, background: "#0070f3", color: "#fff" }}>
+                    {msg.text}
+                  </span>
+                )}
               </div>
             ))}
           </div>
